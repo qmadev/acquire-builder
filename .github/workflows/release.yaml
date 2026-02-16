@@ -1,0 +1,149 @@
+---
+name: Build artefacts and create draft release
+on: 
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        description: "Release tag to create draft with"
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Match tag with Cargo.toml version
+        run: |
+          export CARGO_VERSION=$(grep -oP '^version = "\K\d+.\d+.\d+(?=")' Cargo.toml)
+          if [[ "v${CARGO_VERSION}" != "${{ inputs.tag }}" ]]; then exit 1; fi
+
+  build-windows-mac:
+    needs: [check-version]
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest 
+            target-triple: x86_64-pc-windows-msvc
+          - os: macos-15-intel
+            target-triple: x86_64-apple-darwin
+          - os: macos-15
+            target-triple: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
+          toolchain: "1.93.0"
+      - uses: actions/setup-python@v6
+        id: cp311
+        with:
+          python-version: "3.11"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ./target
+          key: ${{ runner.os }}-cargo-files
+
+      - name: Build
+        if: startsWith(matrix.os, 'windows')
+        run: |
+          cargo run --release -- compile -v --python-exe ${{ steps.cp311.outputs.python-path }}
+          build/bin/acquire-${{ matrix.target-triple }}.exe --help
+
+          cp build/acquire-runner/target/release/acquire.exe ./acquire-${{ matrix.target-triple }}.exe
+          cp ./target/release/acquire-builder.exe ./acquire-builder-${{ matrix.target-triple }}.exe
+
+      - name: Build
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          cargo run --release -- compile -v --python-exe ${{ steps.cp311.outputs.python-path }}
+
+          chmod +x ./build/bin/acquire-${{ matrix.target-triple }}
+          ./build/bin/acquire-${{ matrix.target-triple }} --help
+
+          cp build/acquire-runner/target/release/acquire ./acquire-${{ matrix.target-triple }}
+          cp ./target/release/acquire-builder ./acquire-builder-${{ matrix.target-triple }}
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.target-triple }}
+          path: |
+            acquire-${{ matrix.target-triple }}
+            acquire-${{ matrix.target-triple }}.exe
+            acquire-builder-${{ matrix.target-triple }}
+            acquire-builder-${{ matrix.target-triple }}.exe
+
+  build-linux:
+    needs: [check-version]
+    runs-on: ubuntu-latest
+    container:
+      image: rust:1.93-alpine
+    env:
+      TARGET-TRIPLE: x86_64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/regsitry
+            ~/.cargo/git
+            ./target
+          key: ${{ runner.os }}-cargo-files
+
+      - name: Build
+        run: |
+          apk add python3
+          cargo run --release -- compile -v
+
+          chmod +x ./build/bin/acquire-${{ env.TARGET-TRIPLE }}
+          ./build/bin/acquire-${{ env.TARGET-TRIPLE }} --help
+
+          cp build/acquire-runner/target/release/acquire ./acquire-${{ env.TARGET-TRIPLE }}
+          cp target/release/acquire-builder ./acquire-builder-${{ env.TARGET-TRIPLE }}
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: x86_64-unknown-linux-musl
+          path: |
+            acquire-${{ env.TARGET-TRIPLE }}
+            acquire-builder-${{ env.TARGET-TRIPLE }}
+
+  create-release:
+    needs: [build-windows-mac, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      attestations: write
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Create release
+        run: |
+          mkdir artefacts
+          cd artefacts
+
+          # # Get the last merged PR
+          # export PR_NUMBER=$(gh pr list --state merged --limit 1 --json number --jq '.[].number')
+          # if [[ -z "${PR_NUMBER}" ]]; then
+          #   echo "No PR number found."
+          #   exit 1
+          # fi
+          #
+          # # Parse the workflow ID from the PR check link
+          # export WORKFLOW_ID=$(gh pr checks "${PR_NUMBER}" --json link --jq '.[].link' | head -n1 | awk -F '/' '{print $8}')
+          #
+          # if [[ -z "${WORKFLOW_ID}" ]]; then
+          #   echo "No workflow ID found."
+          #   exit 1
+          # fi
+          #
+          # gh release create $(date +"%Y%m%d%H%M%S") --generate-notes --fail-on-no-commits --latest --target master ./acquire-*.zip
+
+          # Download artefacts
+          echo "Downloading artefacts from workflow ${{ github.run_id }}"
+          gh run download ${{ github.run_id }}
+
+          bash ../.github/scripts/create-release-artefacts.sh
+          gh release create ${{ inputs.tag }} --draft --generate-notes --fail-on-no-commits --target master pre-compiled.tar ./*/acquire-builder-*
