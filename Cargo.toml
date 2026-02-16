@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.101"
-clap = { version = "4.5.57", features = ["derive"] }
+clap = { version = "4.5.58", features = ["derive"] }
 clap-verbosity = "2.1.0"
 dunce = "1.0.5"
 env_logger = { version = "0.11.8", features = ["color"] }
