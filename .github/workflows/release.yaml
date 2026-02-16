@@ -39,7 +39,7 @@ jobs:
         id: cp311
         with:
           python-version: "3.11"
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ./target
@@ -83,7 +83,7 @@ jobs:
       TARGET-TRIPLE: x86_64-unknown-linux-musl
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/regsitry
