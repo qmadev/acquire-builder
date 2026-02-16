@@ -1,0 +1,13 @@
+---
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directories:
+      - "/"
+      - "acquire/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: github-actions
+    directory: .github/workflows
+    schedule:
+      interval: "weekly"

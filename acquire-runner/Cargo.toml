@@ -1,0 +1,23 @@
+[package]
+name = "acquire"
+version = "0.1.0"
+edition = "2024"
+
+[profile.release]
+strip = "symbols"
+opt-level = "s"
+
+[dependencies]
+aead = "0.5.2"
+aes = "0.8.4"
+anyhow = "1.0.101"
+cipher = "0.4.4"
+ctr = "0.9.2"
+ghash = "0.5.1"
+pyo3 = { version = "0.28.0", features = ["macros"] }
+rsa = { version = "0.9.9", features = ["sha2"] }
+sha1 = "0.10.6"
+spki = "0.7.3"
+
+[dev-dependencies]
+hex = "0.4.3"
