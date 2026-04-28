@@ -65,7 +65,7 @@ jobs:
           cp build/acquire-runner/target/release/acquire ./acquire-${{ matrix.target-triple }}
           cp ./target/release/acquire-builder ./acquire-builder-${{ matrix.target-triple }}
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target-triple }}
           path: |

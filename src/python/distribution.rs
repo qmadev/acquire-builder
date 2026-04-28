@@ -307,13 +307,11 @@ pub fn download_dist<P: AsRef<Path>>(url: &str, path: P) -> Result<PathBuf> {
     let dist = dist.bytes()?.to_vec();
 
     let hash = client.get(String::from(url) + ".sha256").send()?.text()?;
-    let mut hasher = Sha256::new();
-    hasher.update(&dist);
-    let calculated_hash = hasher.finalize();
+    let calculated_hash = hex::encode(Sha256::digest(&dist));
 
-    if format!("{:x}", calculated_hash) != hash.trim() {
+    if calculated_hash != hash.trim() {
         log::error!("Original hash: {}", hash);
-        log::error!("Calculated hash: {:x}", calculated_hash);
+        log::error!("Calculated hash: {}", calculated_hash);
         bail!("Hash mismatch");
     }
 
