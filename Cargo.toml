@@ -8,7 +8,7 @@ anyhow = "1.0.102"
 clap = { version = "4.5.60", features = ["derive"] }
 clap-verbosity = "2.1.0"
 dunce = "1.0.5"
-env_logger = { version = "0.11.8", features = ["color"] }
+env_logger = { version = "0.11.10", features = ["color"] }
 flate2 = "1.1.9"
 hex = "0.4.3"
 log = "0.4.29"
