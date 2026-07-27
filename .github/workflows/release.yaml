@@ -35,7 +35,7 @@ jobs:
         with:
           rustflags: ""
           toolchain: "1.93.0"
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         id: cp311
         with:
           python-version: "3.11"
